@@ -61,7 +61,7 @@ gulp.task('jsonServer', function(){
 gulp.task('watch', ['browser-sync'], function(){
     gulp.watch(["json-data.json"], ["jsonServer"]);
     gulp.watch(paths.elm, ['elm-watch']);
-    gulp.watch(paths.staticAssets, ['static']).on('change', browserSync.reload);
+    gulp.watch(paths.staticAssets, ['staticAssets']).on('change', browserSync.reload);
     gulp.watch(paths.sass, ['sass']);
 });
 
