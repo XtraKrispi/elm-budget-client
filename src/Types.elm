@@ -26,6 +26,7 @@ type alias BudgetItem =
 type alias Model =
     { upcomingItems : List BudgetItem
     , errorMessage : Maybe String
+    , upcomingItemsLoading : Bool
     }
 
 
@@ -37,3 +38,6 @@ type Msg
     = GetUpcomingItemsSuccess (List BudgetItem)
     | GetUpcomingItemsFailed Error
     | MarkItemPaid BudgetItem
+    | RemoveItem BudgetItem
+    | MarkItemPaidSuccess BudgetItem
+    | MarkItemPaidFailed BudgetItem Error

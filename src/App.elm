@@ -1,4 +1,4 @@
-port module App exposing (..)
+module App exposing (..)
 
 import Html exposing (program)
 import Types exposing (Model, Msg)

@@ -1,8 +1,8 @@
 {
     "upcomingItems": [
-        { "id": 1, "description": "Mortgage", "amount": 1245.67, "dueDate": "2017-03-25" },
-        { "id": 1, "description": "Mortgage", "amount": 1245.67, "dueDate": "2017-03-25" },
-        { "id": 1, "description": "Mortgage", "amount": 1245.67, "dueDate": "2017-03-25" },
-        { "id": 1, "description": "Mortgage", "amount": 1245.67, "dueDate": "2017-03-25" }
+        { "id": 1, "description": "Mortgage 1", "amount": 1245.67, "dueDate": "2017-03-25", "paid": false, "deleted": false },
+        { "id": 2, "description": "Mortgage 2", "amount": 1245.67, "dueDate": "2017-03-25", "paid": false, "deleted": false },
+        { "id": 3, "description": "Mortgage 3", "amount": 1245.67, "dueDate": "2017-03-25", "paid": false, "deleted": false },
+        { "id": 4, "description": "Mortgage 4", "amount": 1245.67, "dueDate": "2017-03-25", "paid": false, "deleted": false }
     ]
 }

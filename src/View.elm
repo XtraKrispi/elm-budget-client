@@ -38,7 +38,7 @@ viewBudgetItem ({ id, description, amount, dueDate } as budgetItem) =
                 , div [ class "col-sm-4" ]
                     [ div [ class "budget-item-actions" ]
                         [ a [ class "mark-paid", onClick (MarkItemPaid budgetItem) ] [ i [ class "glyphicon glyphicon-ok" ] [] ]
-                        , a [ class "remove-item" ] [ i [ class "glyphicon glyphicon-trash" ] [] ]
+                        , a [ class "remove-item", onClick (RemoveItem budgetItem) ] [ i [ class "glyphicon glyphicon-trash" ] [] ]
                         ]
                     ]
                 ]
@@ -48,11 +48,44 @@ viewBudgetItem ({ id, description, amount, dueDate } as budgetItem) =
 
 view : Model -> Html Msg
 view model =
-    div [ class "container" ]
-        [ div [ class "col-sm-4" ]
-            [ h3 [] [ text "Upcoming Items" ]
-            , div [] <| List.map viewBudgetItem model.upcomingItems
+    let
+        sortedUpcomingItems =
+            List.sortWith
+                (\budgetItem1 budgetItem2 ->
+                    case compare (Date.toTime budgetItem1.dueDate) (Date.toTime budgetItem2.dueDate) of
+                        LT ->
+                            LT
+
+                        GT ->
+                            GT
+
+                        EQ ->
+                            case compare budgetItem1.id budgetItem2.id of
+                                LT ->
+                                    LT
+
+                                GT ->
+                                    GT
+
+                                EQ ->
+                                    EQ
+                )
+    in
+        div [ class "container" ]
+            [ div [ class "col-sm-4" ]
+                [ h3 [] [ text "Upcoming Items" ]
+                , if model.upcomingItemsLoading == True then
+                    div [] [ text "Loading..." ]
+                  else
+                    case model.upcomingItems of
+                        [] ->
+                            div [] [ text "No items" ]
+
+                        _ ->
+                            div [] <|
+                                List.map viewBudgetItem <|
+                                    sortedUpcomingItems model.upcomingItems
+                ]
+            , div [ class "col-sm-4" ] []
+            , div [ class "col-sm-4" ] []
             ]
-        , div [ class "col-sm-4" ] []
-        , div [ class "col-sm-4" ] []
-        ]
