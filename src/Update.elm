@@ -4,9 +4,16 @@ import Http
 import Json.Encode
 import Types exposing (..)
 import Decoders exposing (..)
+import Date.Extra
 
 
 port sendToast : Json.Encode.Value -> Cmd msg
+
+
+port confirmItemRemoval : Json.Encode.Value -> Cmd msg
+
+
+port confirmItemRemovalResponse : ({ budgetItemId : Int, confirmed : Bool } -> msg) -> Sub msg
 
 
 
@@ -54,11 +61,21 @@ encodeToastMessage (ToastMessage msgType message) =
             ]
 
 
+encodeBudgetItem : BudgetItem -> Json.Encode.Value
+encodeBudgetItem { id, description, amount, dueDate } =
+    Json.Encode.object
+        [ ( "id", Json.Encode.int id )
+        , ( "description", Json.Encode.string description )
+        , ( "amount", Json.Encode.float amount )
+        , ( "dueDate", Json.Encode.string <| Date.Extra.toIsoString dueDate )
+        ]
+
+
 getUpcomingItems : NumberOfWeeks -> Cmd Msg
 getUpcomingItems n =
     let
         request =
-            Http.get (baseUrl ++ "upcomingItems?weeks=" ++ (toString n)) budgetItemsDecoder
+            Http.get (baseUrl ++ "upcomingItems?paid=false&deleted=false&weeks=" ++ (toString n)) budgetItemsDecoder
 
         parseFn result =
             case result of
@@ -90,11 +107,35 @@ markItemPaid budgetItem =
         Http.send parseFn request
 
 
+removeItem : BudgetItem -> Cmd Msg
+removeItem budgetItem =
+    let
+        request =
+            patch
+                (baseUrl ++ "upcomingItems/" ++ (toString budgetItem.id))
+                (Http.jsonBody <| Json.Encode.object [ ( "deleted", Json.Encode.bool True ) ])
+
+        parseFn result =
+            case result of
+                Ok _ ->
+                    RemoveItemSuccess budgetItem
+
+                Err err ->
+                    RemoveItemFailed budgetItem err
+    in
+        Http.send parseFn request
+
+
 init : ( Model, Cmd Msg )
 init =
     ( { upcomingItems = [], errorMessage = Nothing, upcomingItemsLoading = True }
     , getUpcomingItems 2
     )
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    confirmItemRemovalResponse (\{ budgetItemId, confirmed } -> ConfirmItemRemoval budgetItemId confirmed)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -135,10 +176,40 @@ update msg model =
             )
 
         RemoveItem budgetItem ->
-            ( { model | upcomingItems = List.filter ((/=) budgetItem) model.upcomingItems }
-            , Cmd.batch
-                [ ToastMessage Info ("Item removed: " ++ budgetItem.description)
-                    |> encodeToastMessage
-                    |> sendToast
-                ]
+            ( model
+            , confirmItemRemoval (encodeBudgetItem budgetItem)
             )
+
+        RemoveItemSuccess budgetItem ->
+            ( model
+            , ToastMessage Success ("Item successfully removed: " ++ budgetItem.description)
+                |> encodeToastMessage
+                |> sendToast
+            )
+
+        RemoveItemFailed budgetItem err ->
+            ( { model | upcomingItems = model.upcomingItems ++ [ budgetItem ] }
+            , ToastMessage Error ("Item was not removed: " ++ budgetItem.description)
+                |> encodeToastMessage
+                |> sendToast
+            )
+
+        ConfirmItemRemoval budgetItemId confirmed ->
+            let
+                budgetItem =
+                    (List.head << List.filter (\{ id } -> id == budgetItemId)) model.upcomingItems
+            in
+                case budgetItem of
+                    Just item ->
+                        if confirmed then
+                            { model | upcomingItems = List.filter ((/=) item) model.upcomingItems }
+                                ! [ removeItem item
+                                  , ToastMessage Info ("Item removed: " ++ item.description)
+                                        |> encodeToastMessage
+                                        |> sendToast
+                                  ]
+                        else
+                            ( model, Cmd.none )
+
+                    Nothing ->
+                        ( model, Cmd.none )

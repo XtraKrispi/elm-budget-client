@@ -4,14 +4,14 @@ import Types exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
-import Date.Format as DateFormat
+import Date.Extra
 import NumberFormat as NumFormat
 import Date exposing (Date)
 
 
 formatFriendlyDate : Date -> String
 formatFriendlyDate =
-    DateFormat.format "%B %e %Y"
+    Date.Extra.toFormattedString "MMMM dd YYYY"
 
 
 formatCurrency : Float -> String
@@ -52,7 +52,7 @@ view model =
         sortedUpcomingItems =
             List.sortWith
                 (\budgetItem1 budgetItem2 ->
-                    case compare (Date.toTime budgetItem1.dueDate) (Date.toTime budgetItem2.dueDate) of
+                    case Date.Extra.compare budgetItem1.dueDate budgetItem2.dueDate of
                         LT ->
                             LT
 

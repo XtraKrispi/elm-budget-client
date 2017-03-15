@@ -38,6 +38,9 @@ type Msg
     = GetUpcomingItemsSuccess (List BudgetItem)
     | GetUpcomingItemsFailed Error
     | MarkItemPaid BudgetItem
-    | RemoveItem BudgetItem
     | MarkItemPaidSuccess BudgetItem
     | MarkItemPaidFailed BudgetItem Error
+    | RemoveItem BudgetItem
+    | RemoveItemSuccess BudgetItem
+    | RemoveItemFailed BudgetItem Error
+    | ConfirmItemRemoval Int Bool

@@ -14,8 +14,3 @@ main =
         , subscriptions = subscriptions
         , view = view
         }
-
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.none

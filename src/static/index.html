@@ -25,6 +25,12 @@
 
             toastr[type](message);
         });
+
+        app.ports.confirmItemRemoval.subscribe(function(obj){
+            var response = confirm("Are you sure you want to remove '" + obj.description +"'?");
+
+            app.ports.confirmItemRemovalResponse.send({budgetItemId: obj.id, confirmed: response});
+        });
     </script>
 </body>
 </html>
