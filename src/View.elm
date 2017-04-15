@@ -2,11 +2,30 @@ module View exposing (..)
 
 import Types exposing (..)
 import Html exposing (..)
-import Html.Attributes exposing (class)
-import Html.Events exposing (onClick)
+import Html.Attributes exposing (class, type_, value, property, style, disabled)
+import Html.Events exposing (onClick, onInput, onSubmit)
 import Date.Extra
 import NumberFormat as NumFormat
 import Date exposing (Date)
+import Json.Encode as Json
+
+
+{-| Create arbitrary floating-point *properties*.
+-}
+floatProperty : String -> Float -> Attribute msg
+floatProperty name float =
+    property name (Json.float float)
+
+
+{-| Uses `valueAsNumber` to update an input with a floating-point value.
+This should only be used on &lt;input&gt; of type `number`, `range`, or `date`.
+It differs from `value` in that a floating point value will not necessarily overwrite the contents on an input element.
+    valueAsFloat 2.5 -- e.g. will not change the displayed value for input showing "2.5000"
+    valueAsFloat 0.4 -- e.g. will not change the displayed value for input showing ".4"
+-}
+valueAsFloat : Float -> Attribute msg
+valueAsFloat value =
+    floatProperty "valueAsNumber" value
 
 
 formatFriendlyDate : Date -> String
@@ -44,6 +63,84 @@ viewBudgetItem ({ id, description, amount, dueDate } as budgetItem) =
                 ]
             ]
         ]
+
+
+scratchArea : Model -> Html Msg
+scratchArea model =
+    let
+        snd ( a, b ) =
+            b
+
+        totalUpcoming =
+            List.foldr ((+) << .amount) 0 model.upcomingItems
+
+        viewScratchAreaItem (( t, a ) as scratchItem) =
+            form [ class "row", onSubmit <| RemoveScratchItem scratchItem ]
+                [ div [ class "col-sm-5" ] [ text t ]
+                , div [ class "col-sm-5" ]
+                    [ div [ class "input-group" ]
+                        [ span [ class "input-group-addon" ] [ text "$" ]
+                        , input
+                            [ type_ "number"
+                            , class "form-control text-right"
+                            , style [ ( "padding-right", "0px" ) ]
+                            , valueAsFloat a
+                            , onInput (ScratchItemChanged scratchItem << Result.withDefault 0 << String.toFloat)
+                            ]
+                            []
+                        ]
+                    ]
+                , div [] [ button [ type_ "submit", class "btn btn-link remove-scratch-item" ] [ i [ class "glyphicon glyphicon-minus-sign" ] [] ] ]
+                ]
+
+        totalScratchItems =
+            List.foldr ((+) << snd) 0 model.scratchAreaItems
+
+        totalRemaining =
+            totalUpcoming - totalScratchItems
+
+        isScratchButtonDisabled =
+            case model.scratchAreaNewItemDescription of
+                Just desc ->
+                    case model.scratchAreaNewItemAmount of
+                        Just amt ->
+                            False
+
+                        Nothing ->
+                            True
+
+                Nothing ->
+                    True
+    in
+        div [] <|
+            [ div [ class "row" ]
+                [ div [ class "col-sm-5" ] [ text "Total Upcoming" ]
+                , div [ class "col-sm-5 text-right" ] [ text <| "$" ++ formatCurrency totalUpcoming ]
+                ]
+            ]
+                ++ (List.map viewScratchAreaItem model.scratchAreaItems)
+                ++ [ form [ class "row", onSubmit AddNewScratchItem ]
+                        [ div [ class "col-sm-5" ] [ input [ class "form-control", type_ "text", value (Maybe.withDefault "" model.scratchAreaNewItemDescription), onInput ScratchItemNewDescription ] [] ]
+                        , div [ class "col-sm-5" ]
+                            [ div [ class "input-group" ]
+                                [ span [ class "input-group-addon" ] [ text "$" ]
+                                , input
+                                    [ type_ "number"
+                                    , class "form-control text-right"
+                                    , style [ ( "padding-right", "0px" ) ]
+                                    , valueAsFloat (Maybe.withDefault 0 model.scratchAreaNewItemAmount)
+                                    , onInput (ScratchItemNewAmount << Result.withDefault 0 << String.toFloat)
+                                    ]
+                                    []
+                                ]
+                            ]
+                        , div [] [ button [ type_ "submit", class "btn btn-link add-scratch-item", disabled isScratchButtonDisabled ] [ i [ class "glyphicon glyphicon-plus-sign" ] [] ] ]
+                        ]
+                   , div [ class "row" ]
+                        [ div [ class "col-sm-5" ] [ text "Total Remaining" ]
+                        , div [ class "col-sm-5 text-right" ] [ text <| "$" ++ formatCurrency totalRemaining ]
+                        ]
+                   ]
 
 
 view : Model -> Html Msg
@@ -86,6 +183,9 @@ view model =
                                 List.map viewBudgetItem <|
                                     sortedUpcomingItems model.upcomingItems
                 ]
-            , div [ class "col-sm-4" ] []
+            , div [ class "col-sm-4" ]
+                [ h3 [] [ text "Scratch Area" ]
+                , scratchArea model
+                ]
             , div [ class "col-sm-4" ] []
             ]

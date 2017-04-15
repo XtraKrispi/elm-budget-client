@@ -27,6 +27,9 @@ type alias Model =
     { upcomingItems : List BudgetItem
     , errorMessage : Maybe String
     , upcomingItemsLoading : Bool
+    , scratchAreaItems : List ( String, Float )
+    , scratchAreaNewItemDescription : Maybe String
+    , scratchAreaNewItemAmount : Maybe Float
     }
 
 
@@ -44,3 +47,8 @@ type Msg
     | RemoveItemSuccess BudgetItem
     | RemoveItemFailed BudgetItem Error
     | ConfirmItemRemoval Int Bool
+    | ScratchItemChanged ( String, Float ) Float
+    | ScratchItemNewDescription String
+    | ScratchItemNewAmount Float
+    | AddNewScratchItem
+    | RemoveScratchItem ( String, Float )

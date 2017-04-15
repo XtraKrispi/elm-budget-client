@@ -128,7 +128,7 @@ removeItem budgetItem =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { upcomingItems = [], errorMessage = Nothing, upcomingItemsLoading = True }
+    ( { upcomingItems = [], errorMessage = Nothing, upcomingItemsLoading = True, scratchAreaItems = [], scratchAreaNewItemDescription = Nothing, scratchAreaNewItemAmount = Nothing }
     , getUpcomingItems 2
     )
 
@@ -213,3 +213,57 @@ update msg model =
 
                     Nothing ->
                         ( model, Cmd.none )
+
+        ScratchItemChanged sItem amt ->
+            { model
+                | scratchAreaItems =
+                    List.map
+                        (\(( s, a ) as sI) ->
+                            if sI == sItem then
+                                ( s, amt )
+                            else
+                                sI
+                        )
+                        model.scratchAreaItems
+            }
+                ! [ Cmd.none ]
+
+        ScratchItemNewDescription desc ->
+            { model
+                | scratchAreaNewItemDescription =
+                    if desc == "" then
+                        Nothing
+                    else
+                        Just desc
+            }
+                ! [ Cmd.none ]
+
+        ScratchItemNewAmount amt ->
+            { model
+                | scratchAreaNewItemAmount =
+                    if amt == 0 then
+                        Nothing
+                    else
+                        Just amt
+            }
+                ! [ Cmd.none ]
+
+        AddNewScratchItem ->
+            let
+                newItem =
+                    case model.scratchAreaNewItemDescription of
+                        Just desc ->
+                            case model.scratchAreaNewItemAmount of
+                                Just amt ->
+                                    [ ( desc, amt ) ]
+
+                                Nothing ->
+                                    []
+
+                        Nothing ->
+                            []
+            in
+                { model | scratchAreaItems = model.scratchAreaItems ++ newItem, scratchAreaNewItemAmount = Nothing, scratchAreaNewItemDescription = Nothing } ! [ Cmd.none ]
+
+        RemoveScratchItem item ->
+            { model | scratchAreaItems = List.filter ((/=) item) model.scratchAreaItems } ! [ Cmd.none ]
