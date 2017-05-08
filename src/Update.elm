@@ -16,6 +16,11 @@ port confirmItemRemoval : Json.Encode.Value -> Cmd msg
 port confirmItemRemovalResponse : ({ budgetItemId : Int, confirmed : Bool } -> msg) -> Sub msg
 
 
+(=>) : a -> b -> ( a, b )
+(=>) =
+    (,)
+
+
 
 -- HTTP Calls
 
@@ -126,11 +131,36 @@ removeItem budgetItem =
         Http.send parseFn request
 
 
+getBudgetItemDefinitions : Cmd Msg
+getBudgetItemDefinitions =
+    let
+        request =
+            Http.get (baseUrl ++ "budgetItemDefinitions?deleted=false") budgetItemDefinitionsDecoder
+
+        parseFn result =
+            case result of
+                Ok r ->
+                    GetBudgetItemDefinitionsSuccess r
+
+                Err err ->
+                    GetBudgetItemDefinitionsFailed err
+    in
+        Http.send parseFn request
+
+
 init : ( Model, Cmd Msg )
 init =
-    ( { upcomingItems = [], errorMessage = Nothing, upcomingItemsLoading = True, scratchAreaItems = [], scratchAreaNewItemDescription = Nothing, scratchAreaNewItemAmount = Nothing }
-    , getUpcomingItems 2
-    )
+    { currentPage = Home
+    , upcomingItems = []
+    , errorMessage = Nothing
+    , upcomingItemsLoading = True
+    , scratchAreaItems = []
+    , scratchAreaNewItemDescription = Nothing
+    , scratchAreaNewItemAmount = Nothing
+    , budgetItemDefinitions = []
+    , editingBudgetItemDefinition = Nothing
+    }
+        => Cmd.batch [ getUpcomingItems 2, getBudgetItemDefinitions ]
 
 
 subscriptions : Model -> Sub Msg
@@ -142,57 +172,54 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         GetUpcomingItemsSuccess items ->
-            { model | upcomingItems = items, upcomingItemsLoading = False } ! [ Cmd.none ]
+            { model | upcomingItems = items, upcomingItemsLoading = False } => Cmd.none
 
         GetUpcomingItemsFailed err ->
             { model | upcomingItems = [], upcomingItemsLoading = False }
-                ! [ ToastMessage Error "There was a problem loading upcoming items"
+                => (ToastMessage Error "There was a problem loading upcoming items"
                         |> encodeToastMessage
                         |> sendToast
-                  ]
+                   )
 
         MarkItemPaid budgetItem ->
-            ( { model | upcomingItems = List.filter ((/=) budgetItem) model.upcomingItems }
-            , Cmd.batch
-                [ markItemPaid budgetItem
-                , ToastMessage Info ("Item marked as paid: " ++ budgetItem.description)
-                    |> encodeToastMessage
-                    |> sendToast
-                ]
-            )
+            { model | upcomingItems = List.filter ((/=) budgetItem) model.upcomingItems }
+                => Cmd.batch
+                    [ markItemPaid budgetItem
+                    , ToastMessage Info ("Item marked as paid: " ++ budgetItem.description)
+                        |> encodeToastMessage
+                        |> sendToast
+                    ]
 
         MarkItemPaidSuccess budgetItem ->
-            ( model
-            , ToastMessage Success ("Item successfully marked as paid: " ++ budgetItem.description)
-                |> encodeToastMessage
-                |> sendToast
-            )
+            model
+                => (ToastMessage Success ("Item successfully marked as paid: " ++ budgetItem.description)
+                        |> encodeToastMessage
+                        |> sendToast
+                   )
 
         MarkItemPaidFailed budgetItem err ->
-            ( { model | upcomingItems = model.upcomingItems ++ [ budgetItem ] }
-            , ToastMessage Error ("Item was not marked as paid: " ++ budgetItem.description)
-                |> encodeToastMessage
-                |> sendToast
-            )
+            { model | upcomingItems = model.upcomingItems ++ [ budgetItem ] }
+                => (ToastMessage Error ("Item was not marked as paid: " ++ budgetItem.description)
+                        |> encodeToastMessage
+                        |> sendToast
+                   )
 
         RemoveItem budgetItem ->
-            ( model
-            , confirmItemRemoval (encodeBudgetItem budgetItem)
-            )
+            model => confirmItemRemoval (encodeBudgetItem budgetItem)
 
         RemoveItemSuccess budgetItem ->
-            ( model
-            , ToastMessage Success ("Item successfully removed: " ++ budgetItem.description)
-                |> encodeToastMessage
-                |> sendToast
-            )
+            model
+                => (ToastMessage Success ("Item successfully removed: " ++ budgetItem.description)
+                        |> encodeToastMessage
+                        |> sendToast
+                   )
 
         RemoveItemFailed budgetItem err ->
-            ( { model | upcomingItems = model.upcomingItems ++ [ budgetItem ] }
-            , ToastMessage Error ("Item was not removed: " ++ budgetItem.description)
-                |> encodeToastMessage
-                |> sendToast
-            )
+            { model | upcomingItems = model.upcomingItems ++ [ budgetItem ] }
+                => (ToastMessage Error ("Item was not removed: " ++ budgetItem.description)
+                        |> encodeToastMessage
+                        |> sendToast
+                   )
 
         ConfirmItemRemoval budgetItemId confirmed ->
             let
@@ -203,16 +230,17 @@ update msg model =
                     Just item ->
                         if confirmed then
                             { model | upcomingItems = List.filter ((/=) item) model.upcomingItems }
-                                ! [ removeItem item
-                                  , ToastMessage Info ("Item removed: " ++ item.description)
+                                => Cmd.batch
+                                    [ removeItem item
+                                    , ToastMessage Info ("Item removed: " ++ item.description)
                                         |> encodeToastMessage
                                         |> sendToast
-                                  ]
+                                    ]
                         else
-                            ( model, Cmd.none )
+                            model => Cmd.none
 
                     Nothing ->
-                        ( model, Cmd.none )
+                        model => Cmd.none
 
         ScratchItemChanged sItem amt ->
             { model
@@ -226,7 +254,7 @@ update msg model =
                         )
                         model.scratchAreaItems
             }
-                ! [ Cmd.none ]
+                => Cmd.none
 
         ScratchItemNewDescription desc ->
             { model
@@ -236,7 +264,7 @@ update msg model =
                     else
                         Just desc
             }
-                ! [ Cmd.none ]
+                => Cmd.none
 
         ScratchItemNewAmount amt ->
             { model
@@ -246,7 +274,7 @@ update msg model =
                     else
                         Just amt
             }
-                ! [ Cmd.none ]
+                => Cmd.none
 
         AddNewScratchItem ->
             let
@@ -263,7 +291,26 @@ update msg model =
                         Nothing ->
                             []
             in
-                { model | scratchAreaItems = model.scratchAreaItems ++ newItem, scratchAreaNewItemAmount = Nothing, scratchAreaNewItemDescription = Nothing } ! [ Cmd.none ]
+                { model | scratchAreaItems = model.scratchAreaItems ++ newItem, scratchAreaNewItemAmount = Nothing, scratchAreaNewItemDescription = Nothing } => Cmd.none
 
         RemoveScratchItem item ->
-            { model | scratchAreaItems = List.filter ((/=) item) model.scratchAreaItems } ! [ Cmd.none ]
+            { model | scratchAreaItems = List.filter ((/=) item) model.scratchAreaItems } => Cmd.none
+
+        ChangePage page ->
+            { model | currentPage = page } => Cmd.none
+
+        GetBudgetItemDefinitionsSuccess defs ->
+            { model | budgetItemDefinitions = defs } => Cmd.none
+
+        GetBudgetItemDefinitionsFailed err ->
+            model
+                => (ToastMessage Error "There was a problem loading the budget definitions, please refresh and try again."
+                        |> encodeToastMessage
+                        |> sendToast
+                   )
+
+        EditBudgetItemDefinition budgetItemDefinition ->
+            { model | editingBudgetItemDefinition = Just budgetItemDefinition } => Cmd.none
+
+        CancelEditingBudgetItemDefinition ->
+            { model | editingBudgetItemDefinition = Nothing } => Cmd.none

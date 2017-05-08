@@ -2,7 +2,7 @@ module View exposing (..)
 
 import Types exposing (..)
 import Html exposing (..)
-import Html.Attributes exposing (class, type_, value, property, style, disabled)
+import Html.Attributes exposing (class, type_, value, property, style, disabled, href)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Date.Extra
 import NumberFormat as NumFormat
@@ -18,7 +18,7 @@ floatProperty name float =
 
 
 {-| Uses `valueAsNumber` to update an input with a floating-point value.
-This should only be used on &lt;input&gt; of type `number`, `range`, or `date`.
+This should only be used on <input> of type `number`, `range`, or `date`.
 It differs from `value` in that a floating point value will not necessarily overwrite the contents on an input element.
     valueAsFloat 2.5 -- e.g. will not change the displayed value for input showing "2.5000"
     valueAsFloat 0.4 -- e.g. will not change the displayed value for input showing ".4"
@@ -143,8 +143,8 @@ scratchArea model =
                    ]
 
 
-view : Model -> Html Msg
-view model =
+homeView : Model -> Html Msg
+homeView model =
     let
         sortedUpcomingItems =
             List.sortWith
@@ -168,7 +168,7 @@ view model =
                                     EQ
                 )
     in
-        div [ class "container" ]
+        div []
             [ div [ class "col-sm-4" ]
                 [ h3 [] [ text "Upcoming Items" ]
                 , if model.upcomingItemsLoading == True then
@@ -188,4 +188,121 @@ view model =
                 , scratchArea model
                 ]
             , div [ class "col-sm-4" ] []
+            ]
+
+
+formattedFrequency : Frequency -> String
+formattedFrequency frequency =
+    case frequency of
+        OneTime ->
+            "One Time"
+
+        Weekly ->
+            "Weekly"
+
+        BiWeekly ->
+            "Bi-Weekly"
+
+        Monthly ->
+            "Monthly"
+
+
+budgetItemAdminView : Model -> Html Msg
+budgetItemAdminView model =
+    let
+        budgetItemRow ({ id, description, amount, startDate, frequency } as def) =
+            let
+                isEditing =
+                    case model.editingBudgetItemDefinition of
+                        Nothing ->
+                            False
+
+                        Just editingDef ->
+                            id == editingDef.id
+            in
+                if isEditing then
+                    tr []
+                        [ td [] [ input [ type_ "text", class "form-control", value description ] [] ]
+                        , td []
+                            [ text <| formattedFrequency frequency ]
+                        , td []
+                            [ text <| formatFriendlyDate startDate ]
+                        , td []
+                            [ text <| "$" ++ formatCurrency amount ]
+                        , td [ class "tools" ]
+                            [ div [ class "btn-group" ]
+                                [ button [ type_ "button", class "btn btn-default" ] [ span [ class "glyphicon glyphicon-ok" ] [] ]
+                                , button [ type_ "button", class "btn btn-default", onClick CancelEditingBudgetItemDefinition ] [ span [ class "glyphicon glyphicon-remove" ] [] ]
+                                ]
+                            ]
+                        ]
+                else
+                    tr []
+                        [ td []
+                            [ text description ]
+                        , td []
+                            [ text <| formattedFrequency frequency ]
+                        , td []
+                            [ text <| formatFriendlyDate startDate ]
+                        , td []
+                            [ text <| "$" ++ formatCurrency amount ]
+                        , td [ class "tools" ]
+                            [ div [ class "btn-group" ]
+                                [ button [ type_ "button", class "btn btn-default", onClick <| EditBudgetItemDefinition def ] [ span [ class "glyphicon glyphicon-edit" ] [] ]
+                                , button [ type_ "button", class "btn btn-default" ] [ span [ class "glyphicon glyphicon-trash" ] [] ]
+                                ]
+                            ]
+                        ]
+    in
+        div []
+            [ h2 [] [ text "Budget Item Admin" ]
+            , table [ class "budget-item-table table table-striped" ]
+                [ thead []
+                    [ tr []
+                        [ th [] [ text "Description" ]
+                        , th [] [ text "Frequency" ]
+                        , th [] [ text "Start Date" ]
+                        , th [] [ text "Amount" ]
+                        , th [] []
+                        ]
+                    ]
+                , tbody [] <|
+                    List.map
+                        budgetItemRow
+                        model.budgetItemDefinitions
+                ]
+            ]
+
+
+view : Model -> Html Msg
+view model =
+    let
+        pageView =
+            case model.currentPage of
+                Home ->
+                    homeView model
+
+                BudgetItemAdmin ->
+                    budgetItemAdminView model
+    in
+        div [ class "container" ]
+            [ ul [ class "nav nav-tabs" ]
+                [ li
+                    ([ onClick <| ChangePage Home ]
+                        ++ if model.currentPage == Home then
+                            [ class "active" ]
+                           else
+                            []
+                    )
+                    [ a [ href "#" ] [ text "Home" ] ]
+                , li
+                    ([ onClick <| ChangePage BudgetItemAdmin ]
+                        ++ if model.currentPage == BudgetItemAdmin then
+                            [ class "active" ]
+                           else
+                            []
+                    )
+                    [ a [ href "#" ] [ text "Budget Admin" ] ]
+                ]
+            , pageView
             ]

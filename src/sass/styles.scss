@@ -1,3 +1,7 @@
+body {
+    margin-top: 50px;
+}
+
 .budget-item {
     .panel-body {
         padding: 8px;
@@ -38,4 +42,18 @@ input::-webkit-inner-spin-button {
 
 .add-scratch-item, .remove-scratch-item{
     font-size: 20px;
+}
+
+.budget-item-table.table {
+    & > tbody, & > tfoot, & > thead {
+        & > tr {
+            & > td, & > th {
+                vertical-align: middle;
+
+                &.tools {
+                    text-align: right;
+                }
+            }
+        }
+    }
 }

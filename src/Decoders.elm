@@ -25,6 +25,28 @@ dateDecoder =
     customDecoder Json.string Date.fromString
 
 
+frequencyDecoder : Json.Decoder Frequency
+frequencyDecoder =
+    customDecoder Json.string
+        (\str ->
+            case String.toLower str of
+                "onetime" ->
+                    Ok OneTime
+
+                "monthly" ->
+                    Ok Monthly
+
+                "biweekly" ->
+                    Ok BiWeekly
+
+                "weekly" ->
+                    Ok Weekly
+
+                _ ->
+                    Err "No such frequency"
+        )
+
+
 budgetItemDecoder : Json.Decoder BudgetItem
 budgetItemDecoder =
     JsonPipeline.decode BudgetItem
@@ -37,3 +59,18 @@ budgetItemDecoder =
 budgetItemsDecoder : Json.Decoder (List BudgetItem)
 budgetItemsDecoder =
     Json.list budgetItemDecoder
+
+
+budgetItemDefinitionDecoder : Json.Decoder BudgetItemDefinition
+budgetItemDefinitionDecoder =
+    JsonPipeline.decode BudgetItemDefinition
+        |> JsonPipeline.required "id" Json.int
+        |> JsonPipeline.required "description" Json.string
+        |> JsonPipeline.required "amount" Json.float
+        |> JsonPipeline.required "startDate" dateDecoder
+        |> JsonPipeline.required "frequency" frequencyDecoder
+
+
+budgetItemDefinitionsDecoder : Json.Decoder (List BudgetItemDefinition)
+budgetItemDefinitionsDecoder =
+    Json.list budgetItemDefinitionDecoder
